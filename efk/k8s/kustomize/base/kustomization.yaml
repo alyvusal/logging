@@ -1,0 +1,28 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+helmCharts:
+- name: elasticsearch
+  repo: https://helm.elastic.co
+  version: "8.5.1"
+  releaseName: es
+  namespace: logging
+  valuesFile: helm/es-values.yml
+# [TODO] kibana has pre-install pod and it is not compatible with kustomize yet
+- name: kibana
+  repo: https://helm.elastic.co
+  version: "8.5.1"
+  releaseName: kibana
+  namespace: logging
+# - name: fluentd
+#   repo: https://fluent.github.io/helm-charts
+#   version: "0.5.2"
+#   releaseName: fluentd
+#   namespace: logging
+#   valuesFile: helm/fluentd-values.yml
+- name: fluent-bit
+  repo: https://fluent.github.io/helm-charts
+  version: "0.48.8"
+  releaseName: fluent-bit
+  namespace: logging
+  valuesFile: helm/fluent-bit-values.yml

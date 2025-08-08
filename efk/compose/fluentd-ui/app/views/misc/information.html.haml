@@ -1,0 +1,80 @@
+- page_title t('.page_title') do
+  - link_to misc_download_info_path, class: "btn btn-primary float-right mt-3" do
+    = icon('fa-download')
+    = t('.download_system_information')
+
+#information
+  - if FluentdUI.update_available? && !FluentdUI.td_agent_ui?
+    - # NOTE: td-agent-ui shouldn't have auto update feature
+    .row
+      .col-xl-12
+        %p
+          = link_to misc_update_fluentd_ui_path, class: "btn btn-primary btn-lg", method: :post do
+            = t('.update_fluentd_ui', version: FluentdUI.latest_version, title: fluentd_ui_title)
+          = t('.update_fluentd_ui_caution', brand: fluentd_ui_brand)
+
+  .row
+    .col-xl-6.col-sm-6.mb-3
+      %b-card{"header" => t("terms.version"),
+              "header-tags" => "h4"}
+        %dl{class: "dl-horizontal"}
+          %dt ruby
+          %dd= RUBY_DESCRIPTION
+          - if FluentdUI.fluentd_version
+            %dt fluentd
+            %dd= FluentdUI.fluentd_version
+          %dt fluentd-ui
+          %dd= FluentdUI::VERSION
+
+    .col-xl-6.col-sm-6.mb-3
+      %b-card{"header" => t('terms.installed_plugins'),
+              "header-tags" => "h4"}
+        - if @plugins.present?
+          %table{class: "table table-hover table-sm", id: "plugins-table"}
+            %thead
+              %tr
+                %th= t('plugins.common.name')
+                %th= t('plugins.common.version')
+            %tbody
+              - @plugins.each do |plugin|
+                %tr
+                  %td= plugin.gem_name
+                  %td= plugin.installed_version
+        - else
+          = t "plugins.common.no_installed"
+
+  .row
+    .col-xl-12.col-sm-12
+      %b-card
+        %template{"slot" => "header"}
+          %h4{"v-b-toggle.env-table" => ""}
+            = icon('fa-caret-down')
+            = t('.env')
+        %b-collapse#env-table
+          %b-form-group.float-right(horizontal){"label" => t("terms.search")}
+            %b-input-group
+              %b-form-input{"v-model" => "filter"}
+              %b-input-group-append
+                %b-btn{ "v-bind:disabled" => "!filter", "v-on:click" => "filter = ''" }
+                  Clear
+          %b-table(stripped hover small){"v-bind:items" => "items",
+                                         "v-bind:fields" => "fields",
+                                         "v-bind:filter" => "filter"}
+
+:javascript
+  window.addEventListener("load", () => {
+    new Vue({
+      name: "Information",
+      el: "#information",
+      data() {
+        return {
+          fields: {
+            key: { label: "#{t('.env_key')}", sortable: true },
+            value: { label: "#{t('.env_value')}" }
+          },
+          items: #{env_items.to_json.html_safe},
+          filter: null
+        };
+      }
+    });
+  });

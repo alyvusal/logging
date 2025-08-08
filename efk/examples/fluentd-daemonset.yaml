@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluentd
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      name: fluentd
+  template:
+    metadata:
+      labels:
+        name: fluentd
+    spec:
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      containers:
+      - name: fluentd
+        image: fluent/fluentd-kubernetes-daemonset:v1.12.3-debian-kafka-2.6
+        env:
+        - name: FLUENTD_ARGS
+          value: -c /fluentd/etc/fluent.conf
+        volumeMounts:
+        - name: config
+          mountPath: /fluentd/etc
+      volumes:
+      - name: config
+        configMap:
+          name: fluentd-config

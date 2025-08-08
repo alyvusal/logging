@@ -1,0 +1,64 @@
+- if @fluentd.present?
+  - page_title t('.page_title')
+  .row
+    .col-xl-6.col-sm-6
+      %div{class: "card card-#{@fluentd.agent.running? ? "primary":"secondary"}"}
+        .card-header
+          %h4
+            - if @fluentd.agent.running?
+              = icon("fa-play")
+              = t("fluentd.common.running")
+            - else
+              = icon("fa-pause")
+              = t("fluentd.common.stopped")
+        .card-body
+          - if flash[:error]
+            .alert.alert-danger= flash[:error]
+          = link_to icon("fa-play") << t("fluentd.common.start"), start_daemon_agent_path(@fluentd),     method: :put, class: "btn #{@fluentd.agent.running? ? "disabled btn-outline-dark" : "btn-primary"}"
+          = link_to icon("fa-pause") << t("fluentd.common.stop"), stop_daemon_agent_path(@fluentd),       method: :put, class: "btn #{@fluentd.agent.running? ? "btn-danger" : "disabled btn-outline-dark"}"
+          = link_to icon("fa-refresh") << t("fluentd.common.restart"), restart_daemon_agent_path(@fluentd), method: :put, class: "btn #{@fluentd.agent.running? ? "btn-warning" : "disabled btn-outline-dark"}"
+          = link_to icon("fa-refresh") << t("fluentd.common.reload"), reload_daemon_agent_path(@fluentd), method: :put, class: "btn #{@fluentd.agent.running? ? "btn-info" : "disabled btn-outline-dark"}"
+    .col-xl-6.col-sm-6
+      .card.card-default
+        .card-header
+          .float-right
+            = link_to t('terms.edit'), edit_daemon_path, class: "btn btn-info"
+            = link_to t('terms.destroy'), "#", class: "btn btn-danger", data: { toggle: "modal", target: "#setting-destroy-modal" }
+          %h4= t('fluentd.common.fluentd_info')
+          .modal.fade{id: "setting-destroy-modal"}
+            .modal-dialog
+              .modal-content
+                .modal-header
+                  %button.close{"data-dismiss" => "modal"}
+                    = raw "&times;"
+                  %h4.modal-title
+                    = t('fluentd.common.destroy_fluentd_setting', brand: fluentd_ui_brand)
+                .modal-body
+                  = raw t('fluentd.common.destroy_fluentd_setting_warning', brand: fluentd_ui_brand)
+                .modal-footer
+                  = form_tag(daemon_path(@fluentd), method: :delete) do
+                    %button.btn.btn-secondary{"data-dismiss" => "modal"}
+                      Close
+                    = submit_tag t('terms.destroy'), class: "btn btn-danger"
+
+        %table.table.table-hover.mb-0
+          %tbody
+            %tr
+              %th= @fluentd.class.human_attribute_name(:pid_file)
+              %td= @fluentd.agent.pid_file
+            %tr
+              %th= @fluentd.class.human_attribute_name(:log_file)
+              %td= @fluentd.agent.log_file
+            %tr
+              %th= @fluentd.class.human_attribute_name(:config_file)
+              %td= @fluentd.agent.config_file
+            %tr
+              %th= @fluentd.class.human_attribute_name(:note)
+              %td= @fluentd.note
+  .row
+    .col-xl-12
+      = preserve do # partial containing <pre>, so shouldn't break indent
+        = render partial: "shared/vue/fluent_log", locals: { fluentd: @fluentd }
+
+- else
+  = render partial: "shared/initial_setup"

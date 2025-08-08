@@ -1,0 +1,61 @@
+- page_title t('.page_title')
+
+#plugins-table
+  %b-form-group.float-right(horizontal){"label" => t("terms.search")}
+    %b-input-group
+      %b-form-input{"v-model" => "filter"}
+      %b-input-group-append
+        %b-btn{ "v-bind:disabled" => "!filter", "v-on:click" => "filter = ''" }
+          = t("terms.clear")
+  %b-table(stripped hover small){"v-bind:items" => "items",
+                                 "v-bind:fields" => "fields",
+                                 "v-bind:filter" => "filter"}
+    %template{"slot" => "is_installed", "slot-scope" => "row"}
+      %template{"v-if" => "row.item.is_installed || row.item.is_processing"}
+        &nbsp;
+      %template(v-else)
+        %b-button{"variant" => "primary",
+                  "data-url" => install_plugins_path,
+                  "v-bind:data-name" => "row.item.name",
+                  "v-on:click" => "installPlugin"}
+          = t("terms.install")
+    %template{"slot" => "rubygems_org_page", "slot-scope" => "row"}
+      %a{"target" => "_blank", "v-bind:href" => "row.item.rubygems_org_page"}
+        = t("plugins.view_on_rubygems_org")
+
+:javascript
+  window.addEventListener("load", () => {
+    new Vue({
+      name: "RecommendedPlugins",
+      el: "#plugins-table",
+      data() {
+        return {
+          fields: {
+            is_installed: { label: "" },
+            name: { label: "#{t("plugins.common.name")}", sortable: true },
+            api_version: { label: "#{t("plugins.common.api_version")}", sortable: true },
+            category: { label: "#{t("plugins.common.category")}", sortable: true },
+            status: { label: "#{t("plugins.common.status")}", sortable: true },
+            rubygems_org_page: { label: "" }
+          },
+          items: #{plugins_json.html_safe},
+          filter: null
+        };
+      },
+      methods: {
+        installPlugin(event) {
+          $.ajax({
+            url: `${event.target.dataset.url}.json`,
+            data: {"plugins[]": event.target.dataset.name, "_method": "PATCH"},
+            method: "POST"
+          }).then((data) => {
+            console.log("installed", data);
+            let item = this.items.find(item => item.name === event.target.dataset.name);
+            item.is_processing = true;
+            item.status = "#{t("terms.processing")}";
+            this.update();
+          });
+        }
+      }
+    });
+  });

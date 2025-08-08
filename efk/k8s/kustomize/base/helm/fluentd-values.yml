@@ -1,0 +1,40 @@
+variant: elasticsearch8
+
+env:
+  - name: "FLUENT_ELASTICSEARCH_SCHEME"
+    value: "https"
+  - name: "FLUENT_ELASTICSEARCH_PASSWORD"
+    valueFrom:
+      secretKeyRef:
+        name: elasticsearch-master-credentials
+        key: password
+
+fileConfigs:
+  04_outputs.conf: |-
+    <label @OUTPUT>
+      <match **>
+        @type elasticsearch
+        host "elasticsearch-master"
+        port 9200
+        scheme https
+        ca_file "/fluentd/elastic/ca.crt"
+        client_cert "/fluentd/elastic/tls.crt"
+        client_key "/fluentd/elastic/tls.key" 
+        ssl_verify true
+        ssl_version TLSv1_2
+        user elastic
+        password "#{ENV['FLUENT_ELASTICSEARCH_PASSWORD']}"
+        # Don't wait for elastic to start up.
+        verify_es_version_at_startup false
+      </match>
+    </label>
+
+volumes:
+  - name: elasticsearch-master-certs
+    secret:
+      secretName: elasticsearch-master-certs
+
+volumeMounts:
+  - name: elasticsearch-master-certs
+    readOnly: true
+    mountPath: /fluentd/elastic

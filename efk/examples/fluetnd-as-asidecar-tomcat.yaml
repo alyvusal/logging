@@ -1,0 +1,58 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tomcat-config
+data:
+  fluent.conf: |
+    <source>
+      @type tail
+      format multiline
+      format_firstline /[0-9]{2}-[A-Za-z]{3}-[0-9]{4}/
+      format1 /^(?<datetime>[0-9]{2}-[A-Za-z]{3}-[0-9]{4} [0-9]{2}:[0-9]{2}:[0-9]{2}.[0-9]{3}) (?<Log-Level>[A-Z]*) (?<message>.*)$/
+      path /opt/apache-tomcat-7.0.57/logs/catalina*,/opt/apache-tomcat-7.0.57/logs/manager*,/opt/apache-tomcat-7.0.57/logs/localhost.*,/opt/apache-tomcat-7.0.57/logs/host-manager*,/opt/apache-tomcat-7.0.57/logs/localhost_access_log*
+      tag tomcat.logs
+    </source>
+    <match tomcat.logs>
+      @type stdout
+    </match>
+---
+apiVersion: apps/v1 # for versions before 1.9.0 use apps/v1beta2
+kind: Deployment
+metadata:
+  name: tomcat
+spec:
+  selector:
+    matchLabels:
+      app: tomcat  replicas: 1 # tells deployment to run 2 pods matching the template
+  template:
+    metadata:
+      labels:
+        team: app
+        app: tomcat
+    spec:
+      containers:
+      - name: test
+        image: tomcat
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: logging-vol
+          mountPath: /opt/apache-tomcat-7.0.57/logs
+      - image: fluent/fluentd:v1.3-debian-1
+        name: fluentd
+        env:
+        - name: FLUENT_UID
+          value: root
+        volumeMounts:
+        - name: logging-vol
+          mountPath: /opt/apache-tomcat-7.0.57/logs
+        - name: log-config
+          mountPath: /fluentd/etc/
+      volumes:
+          - name: logging-vol
+            emptyDir: {}
+          - name: log-config
+            configMap:
+              name: tomcat-config

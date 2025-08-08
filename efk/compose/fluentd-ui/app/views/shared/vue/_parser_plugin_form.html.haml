@@ -1,0 +1,40 @@
+= render "shared/vue/parser_multiline_form"
+= render "shared/vue/config_field"
+
+%script{type: "text/x-template", id: "vue-parser-plugin-form"}
+  .form-group.mb-3{"v-bind:id" => "id"}
+    %b-card{"bg-variant" => "light"}
+      %label{"v-bind:for" => "selectId(pluginType)"}
+        {{ pluginLabel }}
+      %select{"v-bind:id" => "selectId(pluginType)",
+              "v-bind:class" => "selectClass(pluginType)",
+              "v-bind:name" => "selectName(pluginType)",
+              "v-model" => "pluginName",
+              "v-on:change" => "onChange"}
+        %option{"v-for" => "option in options",
+                "v-bind:value" => "option",
+                "v-bind:selected" => "pluginName===option"}
+          {{ option }}
+      %parser-multiline-form{"v-if" => 'pluginName==="multiline"',
+                             "v-bind:plugin-type" => "pluginType",
+                             "v-bind:common-options" => "commonOptions",
+                             "v-on:change-formats" => "onChangeFormats"}
+      %template(v-else)
+        %template{"v-for" => "option in commonOptions"}
+          %config-field{"v-bind:key" => "option.name",
+                        "v-bind:plugin-type" => "pluginType",
+                        "v-bind:option" => "option",
+                        "v-bind:initial-text-value" => "initialParams[option.name]",
+                        "v-on:change-parse-config" => "onChangeParseConfig"}
+        %template{"v-if" => '!_.isEmpty(advancedOptions)'}
+          %b-card(no-body){"bg-variant" => "light"}
+            %template{"slot" => "header"}
+              %h4{"v-b-toggle" => '"parser-section-advanced-setting"'}
+                = icon('fa-caret-down')
+                = t('terms.advanced_setting')
+            %b-collapse{"id" => "parser-section-advanced-setting"}
+              %b-card-body
+                %config-field{"v-for" => "option in advancedOptions",
+                              "v-bind:key" => "option.name",
+                              "v-bind:plugin-type" => "pluginType",
+                              "v-bind:option" => "option"}

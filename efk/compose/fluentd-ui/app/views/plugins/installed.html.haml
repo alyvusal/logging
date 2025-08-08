@@ -1,0 +1,56 @@
+- page_title t('.page_title')
+
+#plugin-table
+  %b-form-group.float-right(horizontal){"label" => t("terms.search")}
+    %b-input-group
+      %b-form-input{"v-model" => "filter"}
+      %b-input-group-append
+        %b-btn{ "v-bind:disabled" => "!filter", "v-on:click" => "filter = ''" }
+          = t("terms.clear")
+  %b-table(stripped hover small){"v-bind:items" => "items",
+                                 "v-bind:fields" => "fields",
+                                 "v-bind:filter" => "filter"}
+    %template{"slot" => "uninstall_button", "slot-scope" => "row"}
+      %b-button{"variant" => "danger", "v-b-modal" => "row.item.uninstall_button"}
+        = t("terms.uninstall")
+      %b-modal{"v-bind:id" => "row.item.uninstall_button",
+               "v-bind:title" => "row.item.name"}
+        = t("terms.confirm_body", action: t("terms.uninstall"))
+        %template{"slot" => "modal-footer"}
+          = form_tag(uninstall_plugins_path, method: :patch) do
+            %b-button{"v-on:click" => "show=false"}
+              Close
+            %input{"type" => "hidden", "name" => "plugins[]", "v-bind:value" => "row.item.name"}
+            %b-button{"type" => "submit", "variant" => "danger"}
+              = t("terms.uninstall")
+    %template{"slot" => "is_latest_version", "slot-scope" => "row"}
+      %template{"v-if" => "row.value"}
+        = t("plugins.common.latest_version")
+      %template(v-else)
+        = form_tag(upgrade_plugins_path, method: :patch) do
+          %input{"type" => "hidden", "name" => "plugins[name]", "v-bind:value" => "row.item.name"}
+          %input{"type" => "hidden", "name" => "plugins[version]", "v-bind:value" => "row.item.latest_version"}
+          = submit_tag(t('plugins.common.install_latest_version'), class: "btn btn-primary")
+
+:javascript
+  window.addEventListener("load", () => {
+    new Vue({
+      name: "InstalledPlugins",
+      el: "#plugin-table",
+      data() {
+        return {
+          fields: {
+            uninstall_button: { label: "" },
+            name: { label: "#{t("plugins.common.name")}", sortable: true },
+            authors: { label: "#{t("plugins.common.authors")}", sortable: true },
+            summary: { label: "#{t("plugins.common.summary")}", sortable: true  },
+            installed_version: { label: "#{t("plugins.common.installed_version")}", sortable: true },
+            latest_version: { label: "#{t("plugins.common.latest_version")}", sortable: true },
+            is_latest_version: { label: "" }
+          },
+          items: #{plugins_json.html_safe},
+          filter: null
+        }
+      }
+    });
+  });

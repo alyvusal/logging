@@ -1,0 +1,36 @@
+- setting.errors.full_messages.each do |e|
+  .alert.alert-danger= e
+
+.form-group
+  = form.label :path
+  = form.hidden_field :path
+  = form.text_field :path, class: "form-control", disabled: true
+.form-group
+  = form.label :parse_type
+  = form.hidden_field :parse_type
+  = form.text_field :parse_type, class: "form-control", disabled: true
+
+.form-group
+  %label= setting.parse_type
+  - parse_config = setting.create_parser
+  = hidden_field_tag("setting[parse[0]][type]", form.object.parse_type)
+  = form.fields("parse[0]", model: parse_config, builder: FluentdFormBuilder) do |f|
+    - f.object.common_options.each do |key|
+      = f.hidden_field(key)
+      = f.field(key, disabled: true)
+
+= form.field(:label)
+= form.field(:tag)
+= form.field(:pos_file)
+
+.card.mb-3
+  %h4.card-header{"data-toggle" => "collapse", "href" => "#advanced-setting"}
+    = icon('fa-caret-down')
+    = t('terms.advanced_setting')
+  #advanced-setting.card-body.collapse
+    .form-group
+      = form.field(:rotate_wait)
+    .form-group
+      = form.field(:read_from_head)
+    .form-group
+      = form.field(:refresh_interval)

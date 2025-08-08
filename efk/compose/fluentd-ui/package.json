@@ -1,0 +1,29 @@
+{
+  "name": "fluentd-ui",
+  "private": true,
+  "scripts": {
+    "lint": "eslint app/javascript"
+  },
+  "dependencies": {
+    "@rails/webpacker": "^4.0.2",
+    "bootstrap": "^4.5.0",
+    "bootstrap-vue": "^2.0.0-rc.14",
+    "codemirror": "^5.58.2",
+    "datatables.net-bs4": "1.10.24",
+    "es6-promise": "^4.2.4",
+    "jquery": "^3.5.0",
+    "lodash": "^4.17.21",
+    "popper.js": "^1.14.3",
+    "rails-ujs": "^5.2.0",
+    "startbootstrap-sb-admin": "^5.0.3",
+    "vue": "^2.6.8",
+    "vue-loader": "^15.7.0",
+    "vue-template-compiler": "^2.6.8",
+    "vuex": "^3.0.1"
+  },
+  "devDependencies": {
+    "eslint": "^5.1.0",
+    "eslint-plugin-vue": "^4.7.0",
+    "webpack-dev-server": ">=3.1.11"
+  }
+}

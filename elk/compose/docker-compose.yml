@@ -1,0 +1,122 @@
+version: "3.9"
+
+# curl -X GET "http://localhost:9200"
+# curl -X GET "http://localhost:9200/_cat/nodes?v"
+# curl -X GET "http://localhost:9200/_cat/plugins?v"
+
+networks:
+  lab_backend:
+    external: true
+
+services:
+
+  elasticsearch:
+    image: elasticsearch:8.8.1
+    container_name: elasticsearch
+    hostname: elasticsearch
+    restart: unless-stopped
+    environment:
+      - discovery.type=single-node
+      - cluster.name=magento2
+      - node.name=elasticsearch
+      - 'ES_JAVA_OPTS=-Xms512m -Xmx512m'
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - index.blocks.read_only_allow_delete
+      - xpack.security.enabled=false
+    networks: [lab_backend]
+    ports: [9200:9200]
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
+    cap_add:
+      - IPC_LOCK
+    healthcheck:
+      test: curl -s -f localhost:9200/_cat/health >/dev/null || exit 1
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # opensearch:
+  #   image: opensearchproject/opensearch:2.8.0
+  #   container_name: opensearch
+  #   hostname: opensearch
+  #   restart: unless-stopped
+  #   networks: [lab_backend]
+  #   environment:
+  #       - discovery.type=single-node
+  #       - http.port=9200
+  #       - bootstrap.memory_lock=true
+  #       - http.cors.allow-origin=http://kibana:5601,http://dejavu:1358,http://elastichq:5000,http://mirage:3030,http://127.0.0.1:5601
+  #       - http.cors.enabled=true
+  #       - http.cors.allow-headers=X-Requested-With,X-Auth-Token,Content-Type,Content-Length,Authorization
+  #       - http.cors.allow-credentials=true
+  #       - plugins.security.disabled=true  # it is same xpack.security.enabled=false on ES
+  #       - "ES_JAVA_OPTS=-Xms512m -Xmx1024m"
+  #   ulimits:
+  #       memlock:
+  #         soft: -1
+  #         hard: -1
+  #       nofile:
+  #         soft: 65535
+  #         hard: 65535
+  #   ports: [9300:9200]
+
+  kibana:
+    image: kibana:8.8.1
+    container_name: kibana
+    hostname: kibana
+    restart: unless-stopped
+    networks: [lab_backend]
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.kibana.rule=Host(`kibana-192.168.0.100.nip.io`)"
+      - "traefik.http.routers.kibana.entrypoints=web"
+      - "traefik.http.services.kibana.loadbalancer.server.port=5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    depends_on:
+       elasticsearch:
+          condition: service_healthy
+
+  dejavu:
+    image: appbaseio/dejavu
+    container_name: dejavu
+    hostname: dejavu
+    restart: unless-stopped
+    networks: [lab_backend]
+    env_file: []
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dejavu.rule=Host(`dejavu-192.168.0.100.nip.io`)"
+      - "traefik.http.routers.dejavu.entrypoints=web"
+      - "traefik.http.services.dejavu.loadbalancer.server.port=1358"
+
+  elastichq:
+    image: elastichq/elasticsearch-hq
+    container_name: elastichq
+    hostname: elastichq
+    restart: unless-stopped
+    networks: [lab_backend]
+    env_file: []
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.elastichq.rule=Host(`elastichq-192.168.0.100.nip.io`)"
+      - "traefik.http.routers.elastichq.entrypoints=web"
+      - "traefik.http.services.elastichq.loadbalancer.server.port=5000"
+
+  mirage:
+    image: appbaseio/mirage
+    container_name: mirage
+    hostname: mirage
+    restart: unless-stopped
+    networks: [lab_backend]
+    env_file: []
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.mirage.rule=Host(`mirage-192.168.0.100.nip.io`)"
+      - "traefik.http.routers.mirage.entrypoints=web"
+      - "traefik.http.services.mirage.loadbalancer.server.port=3030"

@@ -1,0 +1,96 @@
+- add_javascript_pack_tag("settings")
+- page_title t('.page_title')
+
+.row.fluentd-setting-inout
+  .col-xl-3
+    .card.card-primary
+      .card-header
+        %h4= t('.in')
+      .card-body
+        - %w(tail syslog monitor_agent http forward).each do |type|
+          %p
+            = link_to(send("daemon_setting_in_#{type}_path", @fluentd)) do
+              = icon('fa-file-text-o fa-lg')
+              = t("fluentd.common.setup_in_#{type}")
+  .col-xl-1.arrow-right
+    = icon "fa-arrow-circle-right"
+  .col-xl-3
+    .card.card-primary
+      .card-header
+        %h4= t('.filter')
+      .card-body
+        - %w(grep parser record_transformer stdout).each do |type|
+          %p
+            = link_to(send("daemon_setting_filter_#{type}_path", @fluentd)) do
+              = icon('fa-file-text-o -fa-lg')
+              = t("fluentd.common.setup_filter_#{type}")
+  .col-xl-1.arrow-right
+    = icon "fa-arrow-circle-right"
+  .col-xl-4
+    .card.card-primary
+      .card-header
+        %h4= t('.out')
+      .card-body
+        - %w(stdout tdlog s3 mongo elasticsearch forward).each do |type|
+          %p
+            = link_to(send("daemon_setting_out_#{type}_path", @fluentd)) do
+              = icon('fa-file-text-o fa-lg')
+              = t("fluentd.common.setup_out_#{type}")
+
+= render "shared/vue/setting"
+
+#vue-setting.current-settings
+  %h2
+    = t('.current')
+    .float-right
+      %b-btn{"variant" => "outline-dark", "size" => "sm", "v-if" => "loading"}= icon('fa-spin fa-refresh')
+      %b-btn{"variant" => "outline-dark", "size" => "sm", "v-on:click" => "update", "v-if" => "!loading"}= icon('fa-refresh')
+  %b-row
+    %b-col.input{"cols" => "4"}
+      %h3= t('.in')
+    %b-col.filter{"cols" => "4"}
+      %h3= t('.filter')
+    %b-col.output{"cols" => "4"}
+      %h3= t('.out')
+
+  %b-row{"v-for" => "(elements, label) in sections"}
+    %b-col.input{"cols" => "4"}
+      %h5 {{ label }}
+      %div{"v-if" => "loaded && !elements.sources || elements.sources.length == 0"}
+        %p.empty= t('.setting_empty')
+      %setting-section{"v-if" => "loaded && elements.sources && elements.sources.length > 0",
+                       "v-for" => "source in elements.sources",
+                       "v-bind:key" => "source.id",
+                       "v-bind:initial-label" => "source.current_label",
+                       "v-bind:initial-id" => "source.id",
+                       "v-bind:initial-content" => "source.content",
+                       "v-bind:initial-type" => "source.type",
+                       "v-bind:initial-name" => "source.name",
+                       "v-bind:initial-arg" => "source.arg"}
+    %b-col.filter{"cols" => "4"}
+      %h5 {{ label }}
+      %div{"v-if" => "loaded && !elements.filters || elements.filters.length == 0"}
+        %p.empty= t('.setting_empty')
+      %setting-section{"v-if" => "loaded && elements.filters.length > 0",
+                       "v-for" => "filter in elements.filters",
+                       "v-bind:key" => "filter.id",
+                       "v-bind:initial-label" => "filter.current_label",
+                       "v-bind:initial-id" => "filter.id",
+                       "v-bind:initial-content" => "filter.content",
+                       "v-bind:initial-type" => "filter.type",
+                       "v-bind:initial-name" => "filter.name",
+                       "v-bind:initial-arg" => "filter.arg"}
+
+    %b-col.output{"cols" => "4"}
+      %h5 {{ label }}
+      %div{"v-if" => "loaded && !elements.matches || elements.matches.length == 0"}
+        %p.empty= t('.setting_empty')
+      %setting-section{"v-if" => "loaded && elements.matches.length > 0",
+                       "v-for" => "match in elements.matches",
+                       "v-bind:key" => "match.id",
+                       "v-bind:initial-label" => "match.current_label",
+                       "v-bind:initial-id" => "match.id",
+                       "v-bind:initial-content" => "match.content",
+                       "v-bind:initial-type" => "match.type",
+                       "v-bind:initial-name" => "match.name",
+                       "v-bind:initial-arg" => "match.arg"}

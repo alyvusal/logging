@@ -1,0 +1,96 @@
+version: "3.5"
+
+networks:
+  lab_backend:
+    external: true
+
+services:
+  fluentd:
+    image: fluentd:v1.17-1
+    container_name: fluentd
+    hostname: fluentd
+    restart: unless-stopped
+    networks: [lab_backend]
+    env_file: []
+    ports:
+      - "127.0.0.1:24220:24220"
+      - "127.0.0.1:24224:24224"
+      - "127.0.0.1:24224:24224/udp"
+      - "127.0.0.1:24230:24230"
+      - "127.0.0.1:5140:5140"
+      - "127.0.0.1:5140:5140/udp"
+      - "127.0.0.1:8888:8888"
+    volumes:
+      - ./fluentd.conf:/fluentd/etc/fluent.conf
+
+  fluentbit:
+    image: cr.fluentbit.io/fluent/fluent-bit:3.1.7
+    container_name: fluentbit
+    hostname: fluentbit
+    restart: unless-stopped
+    networks: [lab_backend]
+    env_file: []
+    ports:
+      - 127.0.0.1:24225:24224
+      - 127.0.0.1:5141:5140/udp
+      - 127.0.0.1:2020:2020
+    volumes:
+      - ./fluentbit.conf:/fluent-bit/etc/fluent-bit.conf
+      - ./fluentbit-parsers.conf:/fluent-bit/etc/parsers.conf
+
+  # fluentd-ui:
+  #   #   # username="admin"
+  #   #   # password="changeme"
+  #   # build: ./fluentd-ui
+  #   # image: fluent/fluentd-ui:1.0.0
+  #   image: matthewzeemann/fluentd-ui
+  #   labels:
+  #     - "traefik.enable=true"
+  #     - "traefik.http.routers.fluentd-ui.rule=Host(`fluentd-ui-192.168.0.100.nip.io`)"
+  #     - "traefik.http.routers.fluentd-ui.entrypoints=web"
+  #     - "traefik.http.services.fluentd-ui.loadbalancer.server.port=9292"
+  #   privileged: true
+  #   container_name: fluentd-ui
+  #   hostname: fluentd-ui
+  #   restart: unless-stopped
+  #   networks: [lab_backend]
+  #   env_file: []
+  #   volumes:
+  #     - ./fluentd.conf:/root/.fluentd-ui/fluent.conf
+
+  test-fluentd:
+    image: mp3monster/log-simulator:v1
+    container_name: test-fluentd
+    hostname: test-fluentd
+    restart: unless-stopped
+    networks: [lab_backend]
+    env_file: []
+    depends_on: [fluentd]
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: tcp://127.0.0.1:24224
+        tag: "{{.Name}}"
+
+  test-fluentbit:
+    image: mp3monster/log-simulator:v1
+    container_name: test-fluentbit
+    hostname: test-fluentbit
+    restart: unless-stopped
+    networks: [lab_backend]
+    env_file: []
+    depends_on: [fluentbit]
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: tcp://127.0.0.1:24225
+        tag: "lab.{{.Name}}"
+
+# command: ["bash", "-c", "for i in 10000; do sleep 2; echo 'Hello Fluentd!'; done"]
+# docker run --name ubuntu --rm --log-driver=fluentd --log-opt fluentd-address=127.0.0.1:24225 --log-opt tag="{{.Name}}" ubuntu echo 'Hello Fluentd!'
+# docker run --name ubuntu --rm --log-driver=fluentd --log-opt fluentd-address=127.0.0.1:24225 --log-opt tag="{{.Name}}" ubuntu echo 'Hello Fluentbit!'
+# https://docs.fluentd.org/deployment/command-line-option
+# lab fluent exec fluentd ls /usr/bin/
+# docker exec fluentd sh -c 'echo "Hello Vusal" | fluent-cat --none test-none'
+# docker exec fluentd sh -c 'echo "{\"message\":\"hello Vusal\"}" | fluent-cat test-json'
+# lab fluent logs fluentd | grep Vusal
