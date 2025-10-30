@@ -14,7 +14,7 @@ extraEnvs:
 
 # optimization for kind k8s
 antiAffinity: "soft"
-esJavaOpts: "-Xmx128m -Xms128m"
+esJavaOpts: "-Xmx1024m -Xms128m"
 
 volumeClaimTemplate:
   resources:
@@ -27,4 +27,4 @@ resources:
     memory: "512M"
   limits:
     cpu: "1000m"
-    memory: "1024M"
+    memory: "2048"

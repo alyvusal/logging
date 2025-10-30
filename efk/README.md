@@ -95,13 +95,13 @@ Kustomize will install all components of EFK stack
 
 ```bash
 kubectl create ns logging
-kubectl kustomize --enable-helm kustomize/overlays | kubectl -n logging apply -f -
+kubectl kustomize --enable-helm k8s/kustomize/overlays | kubectl -n logging apply -f -
 ```
 
 Cleanup
 
 ```bash
-kubectl -n logging kustomize --enable-helm kustomize/overlays | kubectl -n logging delete -f -
+kubectl -n logging kustomize --enable-helm k8s/kustomize/overlays | kubectl -n logging delete -f -
 ```
 
 #### Elasticsearch
@@ -112,8 +112,8 @@ helm upgrade -i -n observability elastic-operator elastic/eck-operator
 kubectl apply -f examples/Elasticsearch.yaml
 
 # Helm
-kubectl apply -f base-for-helm.yml
-helm upgrade -i es elastic/elasticsearch --version 8.5.1 --namespace logging --create-namespace -f kustomize/base/helm/es-values.yml
+kubectl apply -f k8s/base-for-helm.yml
+helm upgrade -i es elastic/elasticsearch --version 8.5.1 --namespace logging --create-namespace -f k8s/kustomize/base/helm/es-values.yml
 ```
 
 Cleanup
@@ -125,7 +125,8 @@ helm uninstall es -n logging
 #### Kibana
 
 ```bash
-helm upgrade -i kibana elastic/kibana --version 8.5.1 --namespace logging
+# During upgrade run Cleanup commands
+helm upgrade -i kibana elastic/kibana --version 8.5.1 --namespace logging -f k8s/kustomize/base/helm/kibana-values.yml
 ```
 
 Cleanup
