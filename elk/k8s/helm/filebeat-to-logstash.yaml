@@ -22,8 +22,81 @@ daemonset:
       output.logstash:
         hosts: ["logstash-logstash-headless:5044"]
 
+    # If index lifecycle management is enabled (which is typically the default), setup.template.name and setup.template.pattern are ignored.
+    # filebeat.yml: |
+    #   setup.ilm:
+    #     enabled: true
+    #     overwrite: true
+    #     policy_file: "/usr/share/filebeat/ilm.json"
+    #     setup.ilm.overwrite: true
+    #     rollover_alias: "filebeat-%{[agent.version]}"
+    #     setup.ilm.pattern: "-000001"
+    #   setup.template:
+    #     settings:
+    #       index.number_of_replicas: 0
+    #   filebeat.autodiscover:
+    #     providers:
+    #       - type: kubernetes
+    #         templates:
+    #         - condition:
+    #             equals:
+    #               kubernetes.labels.co_elastic_logs/enabled: "true"
+    #           config:
+    #           - type: container
+    #             paths:
+    #             - /var/log/containers/*-${data.kubernetes.container.id}.log
+    #             multiline.type: pattern
+    #             multiline.pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+    #             multiline.negate: true
+    #             multiline.match: after
+
+    #   output.elasticsearch:
+    #     hosts: ["elasticsearch:9200"]
+
+    # # https://www.elastic.co/docs/reference/elasticsearch/index-lifecycle-actions/ilm-rollover
+    # ilm.json: |
+    #   {
+    #     "policy": {
+    #       "phases": {
+    #           "hot": {
+    #               "min_age": "0ms",
+    #               "actions": {
+    #                   "rollover": {
+    #                       "max_primary_shard_size":"5gb"
+    #                   },
+    #                   "set_priority": {
+    #                       "priority": 100
+    #                   }
+    #               }
+    #           },
+    #           "warm": {
+    #               "min_age": "2m",
+    #               "actions": {
+    #                   "set_priority": {
+    #                       "priority": 50
+    #                   }
+    #               }
+    #           },
+    #           "cold": {
+    #               "min_age": "4m",
+    #               "actions": {
+    #                   "set_priority": {
+    #                       "priority": 0
+    #                   }
+    #               }
+    #           },
+    #           "delete": {
+    #               "min_age": "6m",
+    #               "actions": {
+    #                   "delete": {}
+    #               }
+    #           }
+    #       }
+    #     }
+    #   }
+
   secretMounts: []
-# filebeatJavaOpts: -Xmx2g -Xms512m
+filebeatJavaOpts: -Xmx2g -Xms512m
 
 resources:
   requests:
