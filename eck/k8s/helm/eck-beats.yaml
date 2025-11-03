@@ -1,0 +1,153 @@
+elasticsearchRef:
+  name: elasticsearch-eck-demo
+
+# ECK can instruct Beats to set up example dashboards packaged with the Beat
+kibanaRef:
+  name: kibana-eck-demo
+
+annotations:
+  eck.k8s.elastic.co/license: basic
+
+type: "filebeat"  # [filebeat,metricbeat,heartbeat,auditbeat,packetbeat,journalbeat]
+
+config:
+  setup.template:
+    settings:
+      enabled: true
+      name: "filebeat"
+      pattern: "filebeat-*"
+      index.number_of_shards: 1
+      index.number_of_replicas: 0
+  # filebeat.inputs:
+  # - type: container
+  #   paths:
+  #   - /var/log/containers/*.log
+  #
+  # Autodiscover
+  # Deploys Filebeat as a DaemonSet with the autodiscover feature enabled.
+  # It collects logs from Pods in every namespace and loads them to the connected Elasticsearch cluster.
+  filebeat:
+    autodiscover:
+      providers:
+      - type: kubernetes
+        node: ${NODE_NAME}
+        hints:
+          enabled: true
+          default_config:
+            type: filestream
+            id: kubernetes-container-logs-${data.kubernetes.pod.name}-${data.kubernetes.container.id}
+            paths:
+            - /var/log/containers/*${data.kubernetes.container.id}.log
+            parsers:
+            - container: {}
+            prospector:
+              scanner:
+                fingerprint.enabled: true
+                symlinks: true
+            file_identity.fingerprint: {}
+        # Filter log collection:
+        templates:
+        - config:
+          - paths: ["/var/log/containers/*${data.kubernetes.container.id}.log"]
+            id: kubernetes-container-logs-${data.kubernetes.pod.name}-${data.kubernetes.container.id}
+            type: filestream
+            parsers:
+            - container: {}
+            prospector:
+              scanner:
+                fingerprint.enabled: true
+                symlinks: true
+            file_identity.fingerprint: {}
+          # condition.equals.kubernetes.namespace: log-namespace
+        - config:
+          - paths: ["/var/log/containers/*${data.kubernetes.container.id}.log"]
+            id: kubernetes-container-logs-${data.kubernetes.pod.name}-${data.kubernetes.container.id}
+            type: filestream
+            parsers:
+            - container: {}
+            prospector:
+              scanner:
+                fingerprint.enabled: true
+                symlinks: true
+            file_identity.fingerprint: {}
+          # condition.equals.kubernetes.labels.co_elastic_logs/enabled: "true"
+  processors:
+  - add_cloud_metadata: {}
+  - add_host_metadata: {}
+  # output.elasticsearch:
+  #  hosts: ["http://elasticsearch:9200"]
+
+daemonSet:
+  podTemplate:
+    spec:
+      dnsPolicy: ClusterFirstWithHostNet
+      # hostNetwork: true # Allows to provide richer host metadata
+      serviceAccountName: filebeat
+      automountServiceAccountToken: true
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirstWithHostNet
+      securityContext:
+        runAsUser: 0
+      containers:
+      - name: filebeat
+        volumeMounts:
+        - name: varlogcontainers
+          mountPath: /var/log/containers
+        - name: varlogpods
+          mountPath: /var/log/pods
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
+        env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: ES_JAVA_OPTS
+            value: "-Xmx2g -Xms512m"
+      volumes:
+      - name: varlogcontainers
+        hostPath:
+          path: /var/log/containers
+      - name: varlogpods
+        hostPath:
+          path: /var/log/pods
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers
+
+serviceAccount:
+  name: filebeat
+
+clusterRoleBinding:
+  name: filebeat
+  subjects:
+  - kind: ServiceAccount
+    name: filebeat
+    namespace: logging  # change based on your needs
+  roleRef:
+    kind: ClusterRole
+    name: filebeat
+    apiGroup: rbac.authorization.k8s.io
+
+clusterRole:
+  name: filebeat
+  rules:
+  - apiGroups: [""] # "" indicates the core API group
+    resources:
+    - namespaces
+    - pods
+    - nodes
+    verbs:
+    - get
+    - watch
+    - list
+
+monitoring:
+  metrics:
+    elasticsearchRefs:
+    - name: elasticsearch-eck-demo
+      namespace: logging
+  logs:
+    elasticsearchRefs:
+    - name: elasticsearch-eck-demo
+      namespace: logging

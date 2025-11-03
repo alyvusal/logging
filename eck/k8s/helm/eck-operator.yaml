@@ -1,0 +1,4 @@
+installCRDs: false
+config:
+  caValidity: 43800h
+  certificatesValidity: 43800h

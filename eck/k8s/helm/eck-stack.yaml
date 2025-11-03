@@ -1,0 +1,221 @@
+eck-elasticsearch:
+  enabled: true
+  auth:
+    disableElasticUser: true
+  nodeSets:
+  - name: default
+    count: 1
+    config:
+      cluster.routing.allocation.disk.threshold_enabled: false
+      cluster.routing.allocation.disk.threshold_enabled: false
+      cluster.routing.allocation.disk.watermark.low: "96%"
+      cluster.routing.allocation.disk.watermark.high: "97%"
+      cluster.routing.allocation.disk.watermark.flood_stage: "98%"
+      xpack.security.enabled: false
+      xpack.security.audit.enabled: true
+    volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 1Gi
+        # storageClassName: standard
+    podTemplate:
+      spec:
+        initContainers:
+        - name: sysctl
+          securityContext:
+            privileged: true
+            runAsUser: 0
+          command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']
+        containers:
+          - name: elasticsearch
+            readinessProbe:
+              tcpSocket:
+                port: 9200  # when https disabled
+              initialDelaySeconds: 10
+              periodSeconds: 5
+  http:
+    tls:
+      selfSignedCertificate:
+        disabled: true
+  ingress:
+    enabled: true
+    hosts:
+      - host: elasticsearch-192.168.0.100.nip.io
+        path: /
+  # Using the Elasticsearch Monitoring plugin to collect and ship monitoring data is deprecated.
+  monitoring:
+    metrics:
+      elasticsearchRefs:
+      - name: elasticsearch
+        namespace: logging
+    logs:
+      elasticsearchRefs:
+      - name: elasticsearch
+        namespace: logging
+
+
+eck-kibana:
+  enabled: true
+  config:
+    elasticsearch.hosts: ["http://elasticsearch-es-http.logging.svc:9200"]
+    server:
+      publicBaseUrl: http://kibana-192.168.0.100.nip.io
+  http:
+    tls:
+      selfSignedCertificate:
+        disabled: true
+  ingress:
+    enabled: true
+    hosts:
+      - host: kibana-192.168.0.100.nip.io
+        path: /
+  # Using the Elasticsearch Monitoring plugin to collect and ship monitoring data is deprecated.
+  monitoring:
+    metrics:
+      elasticsearchRefs:
+      - name: elasticsearch
+        namespace: logging
+    logs:
+      elasticsearchRefs:
+      - name: elasticsearch
+        namespace: logging
+
+
+eck-beats:
+  enabled: true
+  elasticsearchRef:
+    name: elasticsearch
+  kibanaRef:
+    name: elastic-stack-eck-kibana
+  type: "filebeat"  # [filebeat,metricbeat,heartbeat,auditbeat,packetbeat,journalbeat]
+  config:
+    setup.template:
+      settings:
+        enabled: true
+        name: "filebeat"
+        pattern: "filebeat-*"
+        index.number_of_shards: 1
+        index.number_of_replicas: 0
+    filebeat:
+      autodiscover:
+        providers:
+        - type: kubernetes
+          node: ${NODE_NAME}
+          hints:
+            enabled: true
+            default_config:
+              type: filestream
+              id: kubernetes-container-logs-${data.kubernetes.pod.name}-${data.kubernetes.container.id}
+              paths:
+              - /var/log/containers/*${data.kubernetes.container.id}.log
+              parsers:
+              - container: {}
+              prospector:
+                scanner:
+                  fingerprint.enabled: true
+                  symlinks: true
+              file_identity.fingerprint: {}
+          # Filter log collection:
+          templates:
+          - config:
+            - paths: ["/var/log/containers/*${data.kubernetes.container.id}.log"]
+              id: kubernetes-container-logs-${data.kubernetes.pod.name}-${data.kubernetes.container.id}
+              type: filestream
+              parsers:
+              - container: {}
+              prospector:
+                scanner:
+                  fingerprint.enabled: true
+                  symlinks: true
+              file_identity.fingerprint: {}
+            # condition.equals.kubernetes.namespace: log-namespace
+          - config:
+            - paths: ["/var/log/containers/*${data.kubernetes.container.id}.log"]
+              id: kubernetes-container-logs-${data.kubernetes.pod.name}-${data.kubernetes.container.id}
+              type: filestream
+              parsers:
+              - container: {}
+              prospector:
+                scanner:
+                  fingerprint.enabled: true
+                  symlinks: true
+              file_identity.fingerprint: {}
+            # condition.equals.kubernetes.labels.co_elastic_logs/enabled: "true"
+    processors:
+    - add_cloud_metadata: {}
+    - add_host_metadata: {}
+  daemonSet:
+    podTemplate:
+      spec:
+        dnsPolicy: ClusterFirstWithHostNet
+        serviceAccountName: filebeat
+        automountServiceAccountToken: true
+        terminationGracePeriodSeconds: 30
+        dnsPolicy: ClusterFirstWithHostNet
+        securityContext:
+          runAsUser: 0
+        containers:
+        - name: filebeat
+          volumeMounts:
+          - name: varlogcontainers
+            mountPath: /var/log/containers
+          - name: varlogpods
+            mountPath: /var/log/pods
+          - name: varlibdockercontainers
+            mountPath: /var/lib/docker/containers
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            - name: ES_JAVA_OPTS
+              value: "-Xmx2g -Xms512m"
+        volumes:
+        - name: varlogcontainers
+          hostPath:
+            path: /var/log/containers
+        - name: varlogpods
+          hostPath:
+            path: /var/log/pods
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers
+  serviceAccount:
+    name: filebeat
+  clusterRoleBinding:
+    name: filebeat
+    subjects:
+    - kind: ServiceAccount
+      name: filebeat
+      namespace: logging  # change based on your needs
+    roleRef:
+      kind: ClusterRole
+      name: filebeat
+      apiGroup: rbac.authorization.k8s.io
+  clusterRole:
+    name: filebeat
+    rules:
+    - apiGroups: [""] # "" indicates the core API group
+      resources:
+      - namespaces
+      - pods
+      - nodes
+      verbs:
+      - get
+      - watch
+      - list
+  # Using the Elasticsearch Monitoring plugin to collect and ship monitoring data is deprecated.
+  monitoring:
+    metrics:
+      elasticsearchRefs:
+      - name: elasticsearch
+        namespace: logging
+    logs:
+      elasticsearchRefs:
+      - name: elasticsearch
+        namespace: logging

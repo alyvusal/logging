@@ -1,0 +1,63 @@
+# container name: default: <release-name>-<chart name>-kibana-<nodeset name>-<replica index no>
+nameOverride: eck-demo  # override the name of the Chart: eck-elasticsearch, container name will be elasticsearch-eck-demo-es-default-0
+# fullnameOverride: eck-demo  # container name will be: eck-demo-kibana-default-0, it names ingress also
+
+elasticsearchRef:
+  name: elasticsearch-eck-demo
+  # secretName: kibana-elasticsearch-credentials  # keys: username, password, url
+
+annotations:
+  eck.k8s.elastic.co/license: basic
+
+# config:
+#   elasticsearch.hosts:
+#     - <ELASTICSEARCH_HOST_URL>:9200
+#   elasticsearch.username: elastic
+#   elasticsearch.ssl.certificateAuthorities: /etc/certs/ca.crt
+#   elasticsearch.requestHeadersWhitelist:
+#     - authorization
+# secureSettings:
+#   - secretName: kibana-elasticsearch-credentials  # keys: username, password, url
+# podTemplate:
+#   # metadata:
+#   #   labels:
+#   #     my.custom.domain/label: "label-value"
+#   #   annotations:
+#   #     my.custom.domain/annotation: "annotation-value"
+#   spec:
+#     containers:
+#     - name: kibana
+#       env:
+#         - name: NODE_OPTIONS
+#           value: "--max-old-space-size=2048"
+#       resources:
+#         requests:
+#           memory: 1Gi
+#           cpu: 0.5
+#         limits:
+#           memory: 2.5Gi
+#           cpu: 2
+#     nodeSelector:
+#       type: frontend
+
+ingress:
+  enabled: true
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    # nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    # nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+    # nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+  hosts:
+    - host: kibana-192.168.0.100.nip.io
+      path: /
+
+monitoring:
+  metrics:
+    elasticsearchRefs:
+    - name: elasticsearch-eck-demo
+      namespace: logging
+  logs:
+    elasticsearchRefs:
+    - name: elasticsearch-eck-demo
+      namespace: logging

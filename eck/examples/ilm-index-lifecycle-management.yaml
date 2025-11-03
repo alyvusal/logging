@@ -1,0 +1,113 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ilm-and-index-template-config
+  namespace: logging
+data:
+  # https://www.elastic.co/docs/reference/elasticsearch/index-lifecycle-actions/ilm-rollover
+  ilm-policy.json: |
+    {
+        "policy": {
+            "phases": {
+                "hot": {
+                    "actions": {
+                        "rollover": {
+                            "max_age": "2m",
+                            "max_primary_shard_size":"100kb",
+                            "max_docs": 10000000
+                        },
+                        "set_priority": {
+                            "priority": 50
+                        }
+                    }
+                },
+                "warm": {
+                    "actions": {
+                        "set_priority": {
+                            "priority": 25
+                        }
+                    }
+                },
+                "cold": {
+                    "actions": {
+                        "set_priority": {
+                            "priority": 0
+                        }
+                    }
+                },
+                "delete": {
+                    "min_age": "10m",
+                    "actions": {
+                        "delete": {}
+                    }
+                }
+            }
+        }
+    }
+  index-template.json: |
+    {
+      "index_patterns": ["filebeat-*"],
+      "data_stream": {},
+      "template": {
+        "settings": {
+          "number_of_shards": 1,
+          "number_of_replicas": 1,
+          "index.lifecycle.name": "filebeat-cleanup"
+        }
+      }
+    }
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ilm-policy-cron
+  namespace: logging
+spec:
+  schedule: "* * * * *"  # every day at midnight
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: apply-ilm-policy
+              image: curlimages/curl:latest
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  # Apply ILM Policy
+                  echo "Applying ILM Policy"
+                  # response=$(curl -skv -u elastic:${ELASTIC_PASSWORD} -X PUT "https://elasticsearch-es-http:9200/_ilm/policy/filebeat-cleanup" -H 'Content-Type: application/json' -d "$(cat /etc/config/ilm-policy/ilm-policy.json)")
+                  response=$(curl -skv -X PUT "http://elasticsearch-es-http:9200/_ilm/policy/filebeat-cleanup" -H 'Content-Type: application/json' -d "$(cat /etc/config/ilm-policy/ilm-policy.json)")
+                  echo "ILM Policy Response: $response"
+
+                  # Apply Index Template
+                  echo "Applying Index Template"
+                  # response=$(curl -skv -u elastic:${ELASTIC_PASSWORD} -X PUT "https://elasticsearch-es-http:9200/_index_template/filebeat-index-template" -H 'Content-Type: application/json' -d "$(cat /etc/config/index-template/index-template.json)")
+                  response=$(curl -skv -X PUT "http://elasticsearch-es-http:9200/_index_template/filebeat-index-template" -H 'Content-Type: application/json' -d "$(cat /etc/config/index-template/index-template.json)")
+                  echo "Index Template Response: $response"
+              env:
+                # - name: ELASTIC_PASSWORD
+                #   valueFrom:
+                #     secretKeyRef:
+                #       name: elasticsearch-es-elastic-user
+                #       key: elastic
+              volumeMounts:
+                - mountPath: /etc/config/ilm-policy
+                  name: ilm-policy-volume
+                - mountPath: /etc/config/index-template
+                  name: index-template-volume
+          volumes:
+            - name: ilm-policy-volume
+              configMap:
+                name: ilm-and-index-template-config
+                items:
+                  - key: ilm-policy.json
+                    path: ilm-policy.json
+            - name: index-template-volume
+              configMap:
+                name: ilm-and-index-template-config
+                items:
+                  - key: index-template.json
+                    path: index-template.json
+          restartPolicy: Never
+      backoffLimit: 3

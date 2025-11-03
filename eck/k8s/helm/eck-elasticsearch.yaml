@@ -1,0 +1,125 @@
+# container name: default: <release-name>-<chart name>-es-<nodeset name>-<replica index no>
+nameOverride: eck-demo  # override the name of the Chart: eck-elasticsearch, container name will be elasticsearch-eck-demo-es-default-0
+# fullnameOverride: eck-demo  # container name will be: eck-demo-es-default-0, it names ingress also
+
+
+annotations:
+  eck.k8s.elastic.co/license: basic
+
+# NodeSets are used to specify the topology of the Elasticsearch cluster.
+# Each NodeSet represents a group of Elasticsearch nodes that share the same Elasticsearch configuration and Kubernetes Pod configuration.
+nodeSets:
+- name: default
+  count: 1
+  # Elasticsearch settings that are typically defined in the elasticsearch.yml configuration file can be specified under config:
+  config:
+    # true (default): Elasticsearch uses the mmapfs or hybridfs store types, which leverage memory-mapping for efficient access to index files.
+    #   This typically offers better performance.
+    # false: Elasticsearch uses the niofs store type, which relies on standard Java I/O operations instead of memory-mapping.
+    # this allows ES to run on nodes even if their vm.max_map_count has not been increased, at a performance cost
+    # node.store.allow_mmap: false
+    #
+    # cluster.max_shards_per_node: 1000
+    cluster.routing.allocation.disk.threshold_enabled: false
+    cluster.routing.allocation.disk.threshold_enabled: false
+    cluster.routing.allocation.disk.watermark.low: "96%"
+    cluster.routing.allocation.disk.watermark.high: "97%"
+    cluster.routing.allocation.disk.watermark.flood_stage: "98%"
+  # volumeClaimTemplates:
+  # - metadata:
+  #     name: elasticsearch-data
+  #   spec:
+  #     accessModes:
+  #     - ReadWriteOnce
+  #     resources:
+  #       requests:
+  #         storage: 1Gi
+  #     storageClassName: standard
+  podTemplate:
+    # metadata:
+    #   labels:
+    #     my.custom.domain/label: "label-value"
+    #   annotations:
+    #     my.custom.domain/annotation: "annotation-value"
+    spec:
+      initContainers:
+      - name: sysctl
+        securityContext:
+          privileged: true
+          runAsUser: 0
+        command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']
+      # - name: install-plugins
+      #   command:
+      #   - sh
+      #   - -c
+      #   - |
+      #     bin/elasticsearch-plugin remove --purge analysis-icu
+      #     bin/elasticsearch-plugin install --batch analysis-icu
+      containers:
+      - name: elasticsearch
+        # env:
+        #   - name: NODE_OPTIONS
+        #     value:  "--max-old-space-size=2048"
+        resources:
+          limits:
+            # cpu: 1
+            memory: 2Gi
+          requests:
+            # cpu: 1
+            memory: 2Gi
+      # volumes:
+      #   - name: elasticsearch-data
+      #     emptyDir: {}
+# https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/requests-routing-to-elasticsearch-nodes
+# # Dedicated master nodes
+# - name: master
+#   count: 3
+#   config:
+#     node.roles: ["master"]
+# # Dedicated data nodes
+# - name: data
+#   count: 6
+#   config:
+#     node.roles: ["data"]
+# # Dedicated ingest nodes
+# - name: ingest
+#   count: 3
+#   config:
+#     node.roles: ["ingest"]
+# # Dedicated coordinating nodes
+# - name: coordinating
+#   count: 3
+#   config:
+#     node.roles: []
+# # Dedicated machine learning nodes
+# - name: ml
+#   count: 3
+#   config:
+#     node.roles: ["ml"]
+# # Dedicated transform nodes
+# - name: transform
+#   count: 3
+#   config:
+#     node.roles: ["transform"]
+
+ingress:
+  enabled: true
+  annotations:
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    # nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    # nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+    # nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+  hosts:
+    - host: elasticsearch-192.168.0.100.nip.io
+      path: /
+
+monitoring:
+  metrics:
+    elasticsearchRefs:
+    - name: elasticsearch-eck-demo
+      namespace: logging
+  logs:
+    elasticsearchRefs:
+    - name: elasticsearch-eck-demo
+      namespace: logging

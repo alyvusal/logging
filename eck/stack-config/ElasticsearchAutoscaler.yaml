@@ -1,0 +1,42 @@
+# https://www.elastic.co/docs/deploy-manage/autoscaling/autoscaling-in-eck
+apiVersion: autoscaling.k8s.elastic.co/v1alpha1
+kind: ElasticsearchAutoscaler
+metadata:
+  name: autoscaling-sample
+spec:
+  ## The name of the Elasticsearch cluster to be scaled automatically.
+  elasticsearchRef:
+    name: elasticsearch-sample
+  ## The autoscaling policies.
+  policies:
+    - name: data-ingest
+      roles: ["data", "ingest" , "transform"]
+      resources:
+        nodeCount:
+          min: 3
+          max: 8
+        cpu:
+          min: 2
+          max: 8
+        memory:
+          min: 2Gi
+          max: 16Gi
+        storage:
+          min: 64Gi
+          max: 512Gi
+    - name: ml
+      roles:
+        - ml
+      resources:
+        nodeCount:
+          min: 1
+          max: 9
+        cpu:
+          min: 1
+          max: 4
+        memory:
+          min: 2Gi
+          max: 8Gi
+        storage:
+          min: 1Gi
+          max: 1Gi
