@@ -1,0 +1,23 @@
+elasticsearchRefs:
+  - name: elasticsearch-eck-demo
+
+kibanaRef:
+  name: kibana-eck-demo
+
+deployment:
+  replicas: 1
+  podTemplate:
+    spec:
+      serviceAccountName: fleet-server
+      automountServiceAccountToken: true
+
+clusterRoleBinding:
+  name: fleet-server
+  subjects:
+  - kind: ServiceAccount
+    name: fleet-server
+    namespace: logging
+  roleRef:
+    kind: ClusterRole
+    name: fleet-server
+    apiGroup: rbac.authorization.k8s.io

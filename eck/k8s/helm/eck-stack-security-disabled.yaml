@@ -87,7 +87,7 @@ eck-kibana:
 
 
 eck-beats:
-  enabled: true
+  enabled: false
   elasticsearchRef:
     name: elasticsearch
   kibanaRef:
@@ -219,3 +219,20 @@ eck-beats:
       elasticsearchRefs:
       - name: elasticsearch
         namespace: logging
+
+eck-agent:
+  enabled: true
+  # mode: filebeat
+  policyID: eck-agent
+  elasticsearchRefs:
+    - name: elasticsearch
+  # don't specify Kibana reference, it can't be set in standalone mode
+  # kibanaRef:
+  #   name: elastic-stack-eck-kibana
+  daemonSet:
+    podTemplate:
+      spec:
+        containers:
+        - name: agent
+          securityContext:
+            runAsUser: 0

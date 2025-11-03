@@ -1,0 +1,21 @@
+policyID: eck-agent
+
+# remove Elasticsearch reference, it can't be enabled in fleet mode when Fleet Server is not enabled as well
+elasticsearchRefs: []  # disable default value
+
+# don't specify Kibana reference, it can't be set in standalone mode]
+kibanaRef:
+  name: kibana-eck-demo
+
+fleetServerRef:
+  name: eck-fleet-server
+
+mode: fleet
+
+daemonSet:
+  podTemplate:
+    spec:
+      containers:
+      - name: agent
+        securityContext:
+          runAsUser: 0

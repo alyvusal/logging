@@ -43,7 +43,7 @@ Deployment could be done via `eck-stack` chart or via installing components indi
 helm upgrade -i elastic-stack elastic/eck-stack \
   -n logging --create-namespace \
   --version 0.17.0 \
-  -f k8s/helm/eck-stack.yaml
+  -f k8s/helm/eck-stack-security-disabled.yaml
 ```
 
 ### Deploy indivudually
@@ -91,7 +91,9 @@ kubectl get stackconfigpolicy
 kubectl get -n b scp test-err-stack-config-policy -o jsonpath="{.status}" | jq .
 ```
 
-## Beats
+## Collecting logs, metrics and traces
+
+### Beats
 
 ```bash
 helm upgrade -i beats elastic/eck-beats \
@@ -100,6 +102,46 @@ helm upgrade -i beats elastic/eck-beats \
   -f k8s/helm/eck-beats.yaml
 
 kubectl -n logging get beat
+```
+
+### Agents
+
+Agent combines features of Beats in single deployment: Agent = Filebeat + Metricsbeat + ...
+
+#### [Agent Standalone mode](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/standalone-elastic-agent)
+
+```bash
+# Standalone mode
+kubectl apply -f k8s/agent-config.yaml
+
+helm upgrade -i agent elastic/eck-agent \
+  -n logging --create-namespace \
+  --version 0.17.0 \
+  -f k8s/helm/eck-agent-standalone-mode.yaml
+```
+
+- [Standalone mode](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/standalone-elastic-agent)
+- [Fleet mode](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/fleet-managed-elastic-agent)
+
+#### [Fleet Managed agents](https://www.elastic.co/docs/deploy-manage/deploy/cloud-on-k8s/fleet-managed-elastic-agent)
+
+Kibana security must be enabled to use Fleet.
+
+```bash
+# Install agent as fleet server
+# Note: elastic/eck-agent chart also could be used to install fleet server with below values:
+#     fleetServerEnabled: true
+#     mode: fleet
+helm upgrade -i eck-fleet-server elastic/eck-fleet-server \
+  -n logging --create-namespace \
+  --version 0.17.0 \
+  -f k8s/helm/eck-fleet-server.yaml
+
+# Install agents in fleet enroll mode
+helm upgrade -i agent elastic/eck-agent \
+  -n logging --create-namespace \
+  --version 0.17.0 \
+  -f k8s/helm/eck-agent-fleet-mode.yaml
 ```
 
 ## REFERENCE
